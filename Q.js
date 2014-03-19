@@ -52,7 +52,7 @@ var fixEvent=function(event){
     /* 核心库的配置文件 */
     config:{
         auto:true,
-        coreLib:['./js/jquery.1.9.1.min.js'],
+        coreLib:[], /* 需要加载的核心js文件 */
         model:{}
     },
     selector:null, /* class选择器用到的变量 标识getElementsByClassName原生API是否可用 */
@@ -66,7 +66,7 @@ var fixEvent=function(event){
     cssArr:{},/* 存储已注入css的索引 */
     loaded:{},/* 加载完成 readyState */
     loadList:{},/* 函数执行完毕 开始准备执行回调函数 */
-    version:'1.0.1',
+    version:'1.0.0',
     /* 分离自jquery */
     class2type:{},
     toString:Object.prototype.toString,
@@ -98,7 +98,7 @@ var fixEvent=function(event){
         if(document.getElementsByClassName){
             that.selector=1;
         }
-        window.M=(function(){
+        window.Q=(function(){
             return that.method();
         }());
     },
@@ -214,8 +214,8 @@ var fixEvent=function(event){
             }
         }
         var arr = toArray(dom);
-        for(var i in M){
-            arr[i] = M[i];
+        for(var i in Q){
+            arr[i] = Q[i];
         }
         return arr;
     },
@@ -301,9 +301,9 @@ var fixEvent=function(event){
                 /* 加载核心库 */
                 if(that.config.auto && ( that.loadList[that.config.coreLib.join('')] !== true ) && ( (that.uid>1) !== true ) ){
                     that.check(that.config.coreLib,function(){
-                        M.run.apply(that,args);
+                        Q.run.apply(that,args);
                     });
-                    return M;
+                    return Q;
                 }
                 if( (len>0) && ( (that.loadList[args[0]]===1) !== true ) ){
                     if(typeof args[len-1]==='function'){
@@ -312,7 +312,7 @@ var fixEvent=function(event){
                     id=args.join('');
                     if((args.length === 0 || that.loadList[id]) && fn){
                         fn();
-                        return M;
+                        return Q;
                     }
                     /* 正常加载 */
                     that.check(args,function(){
@@ -322,9 +322,9 @@ var fixEvent=function(event){
                         }
                     });
                 }else{
-                    return M;
+                    return Q;
                 }
-                return M;
+                return Q;
             },
             /* 批量设置模块的方法 */
             set:function(m){
@@ -333,7 +333,7 @@ var fixEvent=function(event){
                         that.config.model[a]=m[a];
                     }
                 }
-                return M;
+                return Q;
             },
             /* CSS注入方法 */
             css:function(a,s){
@@ -352,13 +352,13 @@ var fixEvent=function(event){
                         css.appendChild(document.createTextNode(s));
                     }
                 }
-                return M;
+                return Q;
             },
             /* 单个添加模块的方法 */
             add:function(name,obj){
                 if(!name || !obj || !obj.path){return;}
                 that.config.model[name]=obj;
-                return M;
+                return Q;
             },
             /* 异步执行外部调用的等待方法 */
             when:function(resources, callback, thisObj){
@@ -376,11 +376,11 @@ var fixEvent=function(event){
                         list=rmaps[res] || (rmaps[res]=[]);
                     list.push(id);
                 }
-                return M;
+                return Q;
             },
             /* 异步执行外部调用的触发方法 */
             trigger:function(resources){
-                if(!resources){return M;}
+                if(!resources){return Q;}
                 var maps=that.map,
                     rmaps=that.rmap;
                 if(typeof resources==='string'){resources=[resources];}
@@ -390,7 +390,7 @@ var fixEvent=function(event){
                     that.release(res,rmaps[res]);
                     delete rmaps[res];
                 }
-                return M;
+                return Q;
             },
             /* 选择器的API接口 用来选取class=attriubte */
             className:function(){
