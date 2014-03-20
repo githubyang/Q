@@ -5,7 +5,7 @@
  * 兼容性：几乎兼容所有现代浏览器
  * 性能：尚未测试 但能保证她绝对不是最慢的
  * 开发者：单骑闯天下
- * 最后更新时间：2014.3.13
+ * 最后更新时间：2014.3.20
  * 版本：v 1.0.0 (测试版)
 
  * ---------------------- 项目历程 ---------------------------------------------------------------------------
@@ -34,6 +34,13 @@
  * [attribute$=value] 选取指定属性值结尾的每个元素
  * [attribute*=value] 选取包含属性指定值的每个元素
  * [attribute!=value] 选取不等于指定属性值的每一个元素 jquery里面的
+ * # 2014年3月20日
+ * 增加ready事件加载功能 由于目前水平有限 ready的速度始终无法超过jquery的ready方法
+ * 调整DOM选择接口统一为Q.$()
+ * 增加remove方法用来移除元素
+ * 增加设置和获取元素属性的值attr方法
+ * 增加addClass方法
+ * 增加removeClass方法
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 // 用来修正IE里面的事件 目前把这些函数移到外面
@@ -67,6 +74,9 @@ var fixEvent=function(event){
     loaded:{},/* 加载完成 readyState */
     loadList:{},/* 函数执行完毕 开始准备执行回调函数 */
     version:'1.0.0',
+
+    attribute:['class','id','style','title'], /* html的标准属性 */
+
     /* 分离自jquery */
     class2type:{},
     toString:Object.prototype.toString,
@@ -280,12 +290,121 @@ var fixEvent=function(event){
         }
         return object;
     },
+    trim:function(text){
+        return text==null?"":text.toString().replace(/^\s+/,"").replace(/\s+$/,"");
+    },
     handlerEvent:function(event){
         event=event || fixEvent(window.event);
         var handlers=this.events[event.type];
         if(handlers!==null){
             handlers[0](event);
         }
+    },
+    initReady:function(fn){
+        if(document.addEventListener){
+            document.addEventListener('DOMContentLoaded',function(){
+                document.removeEventListener("DOMContentLoaded",arguments.callee,false);
+                fn();
+            },false);
+        }else{
+            document.attachEvent("onreadystatechange", function() {
+                if(document.readyState === "complete"){
+                    document.detachEvent("onreadystatechange",arguments.callee);
+                    fn();
+                }
+            });
+        }
+    },
+    /* 选择器的API接口 用来选取class=attriubte */
+    className:function(){
+        var args=Array.prototype.slice.call(arguments),
+            arr=[],
+            i=0,
+            a,
+            b,
+            n,
+            tag=args[1]||'*',
+            reg,
+            className;
+        if(args===false){return;}
+        if(this.selector){
+            a=document.getElementsByClassName(args[0]);
+            n=a.length;
+            for(;i<n;i++){
+                arr.push(a[i]);
+            }
+            return arr;
+        }else{
+            classNmae=args[0].replace('/\-/','\\-');
+            reg=new RegExp('(^|\\s)'+classNmae+'(\\s|$)');
+            a=document.getElementsByTagName(tag);
+            n=a.length;
+            for(;i<n;i++){
+                b=a[i];
+                if(reg.test(b.className)){
+                    arr.push(b);
+                }
+            }
+            return arr;
+        }
+    },
+    attriubte:function(){
+        if(this.Reg.reg){
+            reg=this.Reg.reg;
+        }else{
+            var reg=/([\*a-zA-Z1-6]*)?(\[(\w+)\s*(\^|\$|\*|\||~|!)?=?\s*([\w\u00C0-\uFFFF\s\-_\.]+)?\])?/;
+                this.Reg['reg']=reg;
+        }
+        var node=arguments[1] || document,
+            search=arguments[0],
+            str=search.match(reg),
+            tag=str[1],// 属性选择器假如为e[k=v]形式 tag为e
+            key=str[3],// 属性选择器假如为e[k=v]形式 key为k
+            type=str[4]+'=',// 属性选择器假如为e[k=v]形式 type为符号
+            val=str[5],// 属性选择器假如为e[k=v]形式 val为v
+            arr=[],
+            attr,
+            i,
+            value,
+            elem=node.getElementsByTagName(tag),
+            len=elem.length;
+        // 如果支持 IE8+以上都支持
+        if((!!document.querySelectorAll) && type != "!="){
+            value = document.querySelectorAll(search);
+                for(var i=0,length = value.length;i < length;i++){
+                    arr.push(value[i]);
+                }
+                return arr;
+            }
+            for(i=0;i<len;i++){
+                attr=elem[i];
+                value=attr[key];
+                if(typeof value==='string'){
+                    if(!value===false){
+                        var where=false;
+                        if(type==='*='){
+                            where=(value.indexOf(val)>=0)?true:false;
+                        }else if(type==='!='){
+                            where=(value!=val)?true:false;// 将会选取所有属性值不等于条件值的元素 例: 条件值a title="a b" title="a" 将会选取title="a b"
+                        }else if(type==='^='){
+                            where=(value.indexOf(val)===0)?true:false;// 选取以xx开头的所有元素
+                        }else if(type==='$='){
+                            (function(a,b){
+                                var i=b.length;
+                                where=(a.slice(-i)===b)?true:false;// 选取以xx结尾的所有元素
+                            }(value,val));
+                        }else if(type==='~='){
+                            where=((''+value+'').indexOf(val)>=0)?true:false;// 选取指定词汇的元素
+                        }else if(type==='|='){//匹配属性值为XX或以XX-打头的元素
+                            where=( (value===val) ||value.substring(0,val.length+1)===(val+'-') )?true:false;
+                        }else if(type==='='){
+                            where=(value===val)?true:false;
+                        }
+                        where && arr.push(attr);
+                    }
+                }
+            }
+        return arr;
     },
     /* 提供给外部访问的方法接口 */
     method:function(){
@@ -392,96 +511,19 @@ var fixEvent=function(event){
                 }
                 return Q;
             },
-            /* 选择器的API接口 用来选取class=attriubte */
-            className:function(){
-                var args=Array.prototype.slice.call(arguments),
-                    arr=[],
-                    i=0,
-                    a,
-                    b,
-                    n,
-                    tag=args[1]||'*',
-                    reg,
-                    className;
-                if(args===false){return;}
-                if(that.selector){
-                    a=document.getElementsByClassName(args[0]);
-                    n=a.length;
-                    for(;i<n;i++){
-                        arr.push(a[i]);
-                    }
-                    return that.classArray(arr);
-                }else{
-                    classNmae=args[0].replace('/\-/','\\-');
-                    reg=new RegExp('(^|\\s)'+classNmae+'(\\s|$)');
-                    a=document.getElementsByTagName(tag);
-                    n=a.length;
-                    for(;i<n;i++){
-                        b=a[i];
-                        if(reg.test(b.className)){
-                            arr.push(b);
-                        }
-                    }
-                    return that.classArray(arr);
+            /* 属性选择外部接口 */
+            $:function(selector){
+                var elem;
+                if(String(selector).indexOf('#')===0){
+                    elem=document.getElementById(selector.replace('#',''));
+                    return that.classArray([elem]);
+                }else if(String(selector).indexOf('.')===0){
+                    elem=that.className(selector.replace('.',''));
+                    return that.classArray(elem);
+                }else{/* 如果都不是就默认属性匹配 */
+                    elem=that.attriubte(selector);
+                    return that.classArray(elem);
                 }
-            },
-            attriubte:function(){
-                if(that.Reg.reg){
-                    reg=that.Reg.reg;
-                }else{
-                    var reg=/([\*a-zA-Z1-6]*)?(\[(\w+)\s*(\^|\$|\*|\||~|!)?=?\s*([\w\u00C0-\uFFFF\s\-_\.]+)?\])?/;
-                    that.Reg['reg']=reg;
-                }
-                var node=arguments[1] || document,
-                    search=arguments[0],
-                    str=search.match(reg),
-                    tag=str[1],// 属性选择器假如为e[k=v]形式 tag为e
-                    key=str[3],// 属性选择器假如为e[k=v]形式 key为k
-                    type=str[4]+'=',// 属性选择器假如为e[k=v]形式 type为符号
-                    val=str[5],// 属性选择器假如为e[k=v]形式 val为v
-                    arr=[],
-                    attr,
-                    i,
-                    value,
-                    elem=node.getElementsByTagName(tag),
-                    len=elem.length;
-                // 如果支持 IE8+以上都支持
-                if((!!document.querySelectorAll) && type != "!="){
-                    value = document.querySelectorAll(search);
-                    for(var i=0,length = value.length;i < length;i++){
-                        arr.push(value[i]);
-                    }
-                    return that.classArray(arr);
-                }
-                for(i=0;i<len;i++){
-                    attr=elem[i];
-                    value=attr[key];
-                    if(typeof value==='string'){
-                        if(!value===false){
-                            var where=false;
-                            if(type==='*='){
-                                where=(value.indexOf(val)>=0)?true:false;
-                            }else if(type==='!='){
-                                where=(value!=val)?true:false;// 将会选取所有属性值不等于条件值的元素 例: 条件值a title="a b" title="a" 将会选取title="a b"
-                            }else if(type==='^='){
-                                where=(value.indexOf(val)===0)?true:false;// 选取以xx开头的所有元素
-                            }else if(type==='$='){
-                                (function(a,b){
-                                    var i=b.length;
-                                    where=(a.slice(-i)===b)?true:false;// 选取以xx结尾的所有元素
-                                }(value,val));
-                            }else if(type==='~='){
-                                where=((''+value+'').indexOf(val)>=0)?true:false;// 选取指定词汇的元素
-                            }else if(type==='|='){//匹配属性值为XX或以XX-打头的元素
-                                where=( (value===val) ||value.substring(0,val.length+1)===(val+'-') )?true:false;
-                            }else if(type==='='){
-                                where=(value===val)?true:false;
-                            }
-                            where && arr.push(attr);
-                        }
-                    }
-                }
-                return that.classArray(arr);
             },
             /* 事件绑定 */
             bind:function(type,handler){
@@ -499,8 +541,118 @@ var fixEvent=function(event){
                 this[0]['on'+type]=that.handlerEvent;
             },
             /* 事件移除 */
-            remove:function(type){
+            unbind:function(type){
                 this[0].events[type]=null;
+            },
+            /* 事件延迟加载 */
+            ready:function(fn){
+                that.initReady(fn);
+            },
+            /* 元素移除 */
+            remove:function(elem){
+                var delNode=function(a){
+                    var d,
+                        elem=a;
+                    if(!!document.recalc){
+                        if( (elem[0] && elem[0].tagName) !='body'){
+                            d=document.createElement('div');
+                            d.appendChild(elem[0]);
+                            d.innerHTML='';
+                        }
+                    }else{
+                        if( (elem[0] && elem[0].parentNode && elem[0].tagName) != 'body' ){
+                            elem[0].parentNode.removeChild(elem[0]);
+                        }
+                    }
+                };
+                if(elem){
+                    delNode(elem);
+                }else{
+                    delNode(this);
+                }
+            },
+            /* 添加样式 */
+            addClass:function(value){
+                var str=value.split(' '),
+                    len=str.length,
+                    temp,
+                    i=0,
+                    setCss;
+                if(this[0].nodeType===1){
+                    if(!this[0].className){
+                        this[0].className=value;
+                    }else{
+                        temp=' '+this[0].className+' ';
+                        setCss=this[0].className;
+                        if(len>0){
+                            for(;i<len;i++){
+                                if(temp.indexOf(' '+str[i]+' ')<0){
+                                    setCss+=' '+str[i];
+                                }
+                            }
+                        }else{
+                            setCss+=' '+value;
+                        }
+                        this[0].className=that.trim(setCss);
+                    }
+                    return this;
+                }
+            },
+            /* 移除样式 */
+            removeClass:function(value){
+                if(value!=undefined){
+                    var str=this[0].className;
+                    if(str){
+                        var arr=that.trim((str.replace(/\s{2,}/,' '))).split(' '),
+                            len=arr.length,
+                            n,
+                            i=0,
+                            s,
+                            temp;
+                        if(len>1){
+                            for(;i<len;i++){
+                                n=that.indexOf.call(arr,arr[i]);
+                                if(n!=-1){
+                                    arr.splice(n,1);
+                                }
+                            }
+                            s=arr.join(' ');
+                            this[0].className=that.trim(s);
+                        }else{
+                            temp=that.trim(value);
+                            n=that.indexOf.call(arr,temp);
+                            if(n!=-1){
+                                this[0].className='';
+                            }
+                        }
+                    }
+                }else{
+                    this[0].className='';
+                }
+            },
+            /* 设置获取元素属性的值 */
+            attr:function(name,value){
+                if(value!=undefined){
+                    this[0].setAttribute(name,value);
+                    return this;
+                }else{
+                    var a=that.indexOf.call(that.attribute,name),
+                        b;
+                    if(a===-1){
+                        b=this[0].getAttribute(name) || this[0].attributes[name];
+                        if(!b){
+                            b=this[0].getAttributeNode(name)?this[0].getAttributeNode(name).value:'';
+                        }
+                        return b;
+                    }else{
+                        if(name && name=="class" && this[0].className){
+                            b = this[0].className;
+                        }else{
+                            b=this[0][name];
+                        }
+                        return b;
+                    }
+                }
             },
             /* each外部调用方法 */
             each:function(callback,args){
