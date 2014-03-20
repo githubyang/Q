@@ -629,6 +629,7 @@ var fixEvent=function(event){
                 }else{
                     this[0].className='';
                 }
+                return this;
             },
             /* 设置获取元素属性的值 */
             attr:function(name,value){
