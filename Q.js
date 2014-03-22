@@ -5,11 +5,10 @@
  * 兼容性：几乎兼容所有现代浏览器
  * 性能：尚未测试 但能保证她绝对不是最慢的
  * 开发者：单骑闯天下
- * 最后更新时间：2014.3.20
+ * 最后更新时间：2014.3.22
  * 版本：v 1.0.0 (测试版)
 
  * ---------------------- 项目历程 ---------------------------------------------------------------------------
- * # v1.0.0
  * 2013年12月份开始构思js模块化加载
  * 2014年3月11框架发布并且定义名称为M.js 目前已独立出来托管在http://github.com/githubyang/M
  * 
@@ -41,6 +40,10 @@
  * 增加设置和获取元素属性的值attr方法
  * 增加addClass方法
  * 增加removeClass方法
+ * # 2014年3月21日
+ * 增加方法 append prepend before after html val
+ * # 2014年3月22日
+ * 增加方法css用来获取元素的 width height padding
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 // 用来修正IE里面的事件 目前把这些函数移到外面
@@ -222,7 +225,7 @@ var fixEvent=function(event){
                 }
                 return arr;
             }
-        }
+        };
         var arr = toArray(dom);
         for(var i in Q){
             arr[i] = Q[i];
@@ -235,26 +238,10 @@ var fixEvent=function(event){
     isWindow:function(obj){return obj && typeof obj === "object" && "setInterval" in obj;},
     isNaN:function(obj){
         var rdigit=/\d/;
-        return obj==null || !rdigit.test(obj) || isNaN(obj);
+        return obj===null || !rdigit.test(obj) || isNaN(obj);
     },
     type:function(obj){
-        return obj==null?String(obj):this.class2type[this.toString.call(obj)] || "object";
-    },
-    isPlainObject:function(obj){
-        if(!obj || this.type(obj) !== "object" || obj.nodeType || this.isWindow(obj)){
-            return false;
-        }
-        if(obj.constructor && !this.hasOwn.call(obj,"constructor") && !this.hasOwn.call(obj.constructor.prototype,"isPrototypeOf")){return false;}
-        var key;
-        for(key in obj){}
-        return key===undefined || this.hasOwn.call(obj,key);
-    },
-    isEmptyObject:function(obj){
-        for(var name in obj){return false;}
-            return true;
-        },
-        nodeName:function(elem,name){
-        return elem.nodeName && elem.nodeName.toUpperCase()===name.toUpperCase();
+        return obj===null?String(obj):this.class2type[this.toString.call(obj)] || "object";
     },
     /* 遍历方法 我是从jquery里面提取的 */
     each:function(object,callback,args){
@@ -291,7 +278,7 @@ var fixEvent=function(event){
         return object;
     },
     trim:function(text){
-        return text==null?"":text.toString().replace(/^\s+/,"").replace(/\s+$/,"");
+        return text===null?"":text.toString().replace(/^\s+/,"").replace(/\s+$/,"");
     },
     handlerEvent:function(event){
         event=event || fixEvent(window.event);
@@ -335,7 +322,7 @@ var fixEvent=function(event){
             }
             return arr;
         }else{
-            classNmae=args[0].replace('/\-/','\\-');
+            classNmae=args[0].replace('-','\\-');
             reg=new RegExp('(^|\\s)'+classNmae+'(\\s|$)');
             a=document.getElementsByTagName(tag);
             n=a.length;
@@ -349,29 +336,31 @@ var fixEvent=function(event){
         }
     },
     attriubte:function(){
+        var reg;
         if(this.Reg.reg){
             reg=this.Reg.reg;
         }else{
-            var reg=/([\*a-zA-Z1-6]*)?(\[(\w+)\s*(\^|\$|\*|\||~|!)?=?\s*([\w\u00C0-\uFFFF\s\-_\.]+)?\])?/;
-                this.Reg['reg']=reg;
+            reg=/([\*a-zA-Z1-6]*)?(\[(\w+)\s*(\^|\$|\*|\||~|!)?=?\s*([\w\u00C0-\uFFFF\s\-_\.]+)?\])?/;
+            this.Reg.reg=reg;
         }
         var node=arguments[1] || document,
             search=arguments[0],
             str=search.match(reg),
-            tag=str[1],// 属性选择器假如为e[k=v]形式 tag为e
-            key=str[3],// 属性选择器假如为e[k=v]形式 key为k
-            type=str[4]+'=',// 属性选择器假如为e[k=v]形式 type为符号
-            val=str[5],// 属性选择器假如为e[k=v]形式 val为v
+            tag=str[1], /* 属性选择器假如为e[k=v]形式 tag为e */
+            key=str[3], /* 属性选择器假如为e[k=v]形式 key为k */
+            type=str[4]+'=', /* 属性选择器假如为e[k=v]形式 type为符号 */
+            val=str[5], /* 属性选择器假如为e[k=v]形式 val为v */
             arr=[],
             attr,
             i,
+            n,
             value,
             elem=node.getElementsByTagName(tag),
             len=elem.length;
-        // 如果支持 IE8+以上都支持
+        /* 如果支持 IE8+以上都支持 */
         if((!!document.querySelectorAll) && type != "!="){
             value = document.querySelectorAll(search);
-                for(var i=0,length = value.length;i < length;i++){
+                for(i=0,length = value.length;i < length;i++){
                     arr.push(value[i]);
                 }
                 return arr;
@@ -380,31 +369,109 @@ var fixEvent=function(event){
                 attr=elem[i];
                 value=attr[key];
                 if(typeof value==='string'){
-                    if(!value===false){
+                    if(value!==false){
                         var where=false;
                         if(type==='*='){
                             where=(value.indexOf(val)>=0)?true:false;
                         }else if(type==='!='){
-                            where=(value!=val)?true:false;// 将会选取所有属性值不等于条件值的元素 例: 条件值a title="a b" title="a" 将会选取title="a b"
+                            where=(value!=val)?true:false; /* 将会选取所有属性值不等于条件值的元素 例: 条件值a title="a b" title="a" 将会选取title="a b" */
                         }else if(type==='^='){
-                            where=(value.indexOf(val)===0)?true:false;// 选取以xx开头的所有元素
+                            where=(value.indexOf(val)===0)?true:false; /* 选取以xx开头的所有元素 */
                         }else if(type==='$='){
-                            (function(a,b){
-                                var i=b.length;
-                                where=(a.slice(-i)===b)?true:false;// 选取以xx结尾的所有元素
-                            }(value,val));
+                            n=val.length;
+                            where=(value.slice(-n)===val)?true:false; /* 选取以xx结尾的所有元素 */
                         }else if(type==='~='){
-                            where=((''+value+'').indexOf(val)>=0)?true:false;// 选取指定词汇的元素
-                        }else if(type==='|='){//匹配属性值为XX或以XX-打头的元素
-                            where=( (value===val) ||value.substring(0,val.length+1)===(val+'-') )?true:false;
+                            where=((''+value+'').indexOf(val)>=0)?true:false; /* 选取指定词汇的元素 */
+                        }else if(type==='|='){ /* 匹配属性值为XX或以XX-打头的元素 */
+                            where=( (value===val) ||value.slice(0,val.length+1)===(val+'-') )?true:false;
                         }else if(type==='='){
                             where=(value===val)?true:false;
                         }
-                        where && arr.push(attr);
+                        if(where){
+                            arr.push(attr);
+                        }
                     }
                 }
             }
         return arr;
+    },
+    insert:function(elem,value,check){
+        var fragment=document.createDocumentFragment(),
+            str=this.parseTag(value,fragment);
+        if(check==='append'){
+            elem.appendChild(str);
+        }else if(check==='prepend'){
+            elem.insertBefore(str,elem.firstChild);
+        }else if(check==='before'){
+            elem.parentNode.insertBefore(str,elem);
+        }else if(check==='after'){
+            elem.parentNode.insertBefore(str,elem.nextSibling);
+        }
+    },
+    parseTag:function(value,fragment){
+        var div=document.createElement('div'),
+            node,
+            regTag=/^<(\w+)\s*\/?>$/,/* 匹配单个标签 */
+            regTags=/<\s*([\w\:]+)/;
+        if(regTag.test(value)===true){
+            return document.createElement(RegExp.$1);
+        }else if(regTags.test(value)===true){
+            div.innerHTML=value;
+            while((node=div.firstChild)){ /* 将div上的节点转移到文档碎片上 */
+                fragment.appendChild(node);
+            }
+            return fragment;
+        }else{
+            node=document.createTextNode(value);
+            fragment.appendChild(node);
+            return fragment;
+        }
+    },
+    getStyle:function(elem,style){
+        var isQuirk=(document.documentMode)?(document.documentMode==5)?true:false:((document.compatMode=="CSS1Compat")?false:true),
+            toHump=function(value){
+                return value.replace(/\-(\w)/g,function(a,value){
+                    return value.toUpperCase();
+                });
+            },
+            getIEopacity=function(elem){
+                var filter;
+                if(!!window.XDomainRequest){
+                    filter = elem.style.filter.match(/progid:DXImageTransform.Microsoft.Alpha\(.?opacity=(.*).?\)/i);
+                }else{
+                    filter = elem.style.filter.match(/alpha\(opacity=(.*)\)/i);
+                }
+                if(filter){
+                    var value = parseFloat(filter[1]);
+                    if (!isNaN(value)) {
+                        return value ? value / 100 : 0;
+                    }
+                }
+                return 1;
+            };
+        if(document.recalc){
+            if(style=="opacity"){
+                return getIEopacity(elem);
+            }
+            var value=elem.currentStyle[toHump(style)];
+            if(/^(height|width)$/.test(style)){
+                var values = (style == 'width') ? ['left', 'right'] : ['top', 'bottom'], size = 0;
+                if(isQuirk){
+                    return elem[toHump("offset-"+style)];
+                }else{
+                    var client = parseFloat(elem[toHump("client-"+style)]),
+                        paddingA = parseFloat(this.getStyle.call(null,elem, "padding-"+ values[0])),
+                        paddingB = parseFloat(this.getStyle.call(null,elem, "padding-"+ values[1]));
+                    return (client - paddingA - paddingB);
+                }
+            }
+            return value;
+        }else{
+            if(style === "float"){
+                style = Float;
+            }
+            return document.defaultView.getComputedStyle(elem,null).getPropertyValue(style);
+        }
     },
     /* 提供给外部访问的方法接口 */
     method:function(){
@@ -455,7 +522,7 @@ var fixEvent=function(event){
                 return Q;
             },
             /* CSS注入方法 */
-            css:function(a,s){
+            inCss:function(a,s){
                 var css=document.getElementById('addCss');
                 if(!css){
                     css=document.createElement('style');
@@ -514,7 +581,12 @@ var fixEvent=function(event){
             /* 属性选择外部接口 */
             $:function(selector){
                 var elem;
-                if(String(selector).indexOf('#')===0){
+                if(typeof selector == "object" || selector.nodeType === 1 || selector.nodeType === 9 ){
+                    if(selector == document){
+                        selector = document.body;
+                    }
+                    return that.classArray([selector]);
+                }else if(String(selector).indexOf('#')===0){
                     elem=document.getElementById(selector.replace('#',''));
                     return that.classArray([elem]);
                 }else if(String(selector).indexOf('.')===0){
@@ -600,7 +672,7 @@ var fixEvent=function(event){
             },
             /* 移除样式 */
             removeClass:function(value){
-                if(value!=undefined){
+                if(value!==undefined){
                     var str=this[0].className;
                     if(str){
                         var arr=that.trim((str.replace(/\s{2,}/,' '))).split(' '),
@@ -633,7 +705,7 @@ var fixEvent=function(event){
             },
             /* 设置获取元素属性的值 */
             attr:function(name,value){
-                if(value!=undefined){
+                if(value!==undefined){
                     this[0].setAttribute(name,value);
                     return this;
                 }else{
@@ -654,6 +726,44 @@ var fixEvent=function(event){
                         return b;
                     }
                 }
+            },
+            /* 添加文档碎片方法 尚未完全实现 */
+            append:function(value){
+                if(value===undefined){return;}
+                that.insert(this[0],value,'append');
+            },
+            prepend:function(value){
+                if(value===undefined){return;}
+                that.insert(this[0],value,'prepend');
+            },
+            before:function(value){
+                if(value===undefined){return;}
+                that.insert(this[0],value,'before');
+            },
+            after:function(value){
+                if(value===undefined){return;}
+                that.insert(this[0],value,'after');
+            },
+            html:function(value){
+                var str;
+                if(value===undefined){
+                    return this[0].innerHTML;
+                }else{
+                    this[0].innerHTML=value;
+                    return this;
+                }
+            },
+            val:function(value){
+                if(value===undefined){
+                    return this[0].textContent? this[0].textContent:this[0].innerText;
+                }else{
+                    return this[0].value;
+                }
+            },
+            /* 获取样式属性值的方法 */
+            css:function(value){
+                if(value===undefined){return;}
+                return that.getStyle(this[0],value);
             },
             /* each外部调用方法 */
             each:function(callback,args){
