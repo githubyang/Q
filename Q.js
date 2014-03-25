@@ -5,7 +5,7 @@
  * 兼容性：几乎兼容所有现代浏览器
  * 性能：尚未测试 但能保证她绝对不是最慢的
  * 开发者：单骑闯天下
- * 最后更新时间：2014.3.22
+ * 最后更新时间：2014.3.25
  * 版本：v 1.0.0 (测试版)
 
  * ---------------------- 项目历程 ---------------------------------------------------------------------------
@@ -44,20 +44,10 @@
  * 增加方法 append prepend before after html val
  * # 2014年3月22日
  * 增加方法css用来获取元素的 width height padding
+ * # 2014年3月25日
+ * 修改事件绑定 增加事件缓存 以及修正IE里面的部分事件
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
-// 用来修正IE里面的事件 目前把这些函数移到外面
-var fixEvent=function(event){
-        event.preventDefault=preventDefault;
-        event.stopPropagation=stopPropagation;
-        return event;
-    },
-    preventDefault=function(){
-        window.event.returnValue=false;
-    },
-    stopPropagation=function(){
-        window.event.cancelBubble=true;
-    };
 ;({
     /* 核心库的配置文件 */
     config:{
@@ -76,6 +66,11 @@ var fixEvent=function(event){
     cssArr:{},/* 存储已注入css的索引 */
     loaded:{},/* 加载完成 readyState */
     loadList:{},/* 函数执行完毕 开始准备执行回调函数 */
+
+    cacheData:{},/* 缓存事件的数据 */
+    uuid:null,/* 缓存事件的计数 */
+    expando:null,/* 读取和删除事件缓存数据的索引 */
+
     version:'1.0.0',
 
     attribute:['class','id','style','title'], /* html的标准属性 */
@@ -87,6 +82,8 @@ var fixEvent=function(event){
     /* 负责初始化 */
     init:function(){
         var that=this;
+        this.uuid=0;
+        this.expando='Q'+(Math.random()+'').slice(-8);
         /* 初始外部配置 */
         (function(){
             var jsObj = (function (a) {
@@ -280,12 +277,91 @@ var fixEvent=function(event){
     trim:function(text){
         return text===null?"":text.toString().replace(/^\s+/,"").replace(/\s+$/,"");
     },
-    handlerEvent:function(event){
-        event=event || fixEvent(window.event);
-        var handlers=this.events[event.type];
-        if(handlers!==null){
-            handlers[0](event);
+    data:function(elem,key,value){
+        var index=(elem===window)?0:(elem.nodeType===9)?1:elem[this.expando]?elem[this.expando]:(elem[this.expando]=++this.uuid),
+            pointer=this.cacheData[index]?this.cacheData[index]:(this.cacheData[index]={});
+        if(value!==undefined){
+            pointer[key]=value;
         }
+        return pointer[key];
+    },
+    removeData:function(elem,key){
+        var index=(elem===window)?0:(elem.nodeType===9)?1:elem[this.expando],
+            isEmptyObject=function(obj){
+                var name;
+                for(name in obj){
+                    return false;
+                }
+                return true;
+            },
+            deleteData=function(elem){
+                if(index<1){return;}
+                try{
+                    delete elem[this.expando];
+                }catch(e){
+                    elem.removeAttribute(this.expando);
+                }
+            };
+        if(index===undefined){return;}
+        if(key){
+            delete this.cacheData[index][key];
+            if(isEmptyObject(this.cacheData[index])){
+                deleteData(elem);
+            }
+        }else{
+            deleteData(elem);
+        }
+    },
+    /* 添加事件 */
+    addEvent:function(elem,type,handler){
+        elem['on'+type]=handler;
+    },
+    /* 移除事件 */
+    removeEvent:function(elem,type){
+        elem['on'+type]=null;
+        this.removeData(elem,type);
+    },
+    /* IE里面的事件修正 */
+    fixEvent:function(e){
+        if(e.target){return e;}
+        var event={},
+            name;
+        event.target=(e.srcElement||document);
+        event.preventDefault=function(){
+            e.returnValue=false;
+        };
+        event.stopPropagation=function(){
+            e.cancelBubble=true;
+        };
+        for(name in e){
+            event[name]=e[name];
+        }
+        if((event.pageX!==true) && event.clientX !==null){
+            var doc=document.documentElement,
+                body=document.body;
+            event.pageX = event.clientX + (doc && doc.scrollLeft || body && body.scrollLeft || 0) - (doc && doc.clientLeft || body && body.clientLeft || 0);
+            event.pageY = event.clientY + (doc && doc.scrollTop  || body && body.scrollTop  || 0) - (doc && doc.clientTop  || body && body.clientTop  || 0);
+        }
+        return event;
+    },
+    /* 事件绑定 */
+    handler:function(elem){
+        var that=this;
+        return function(event){
+            event=that.fixEvent(event || window.event);
+            var type=event.type,
+                i=0,
+                handler,
+                events=that.data(elem,type),
+                len=events.length;
+            for(;i<len;i++){
+                handler=events[i];
+                if(handler.call(elem,event)===false){
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            }
+        };
     },
     initReady:function(fn){
         if(document.addEventListener){
@@ -597,24 +673,20 @@ var fixEvent=function(event){
                     return that.classArray(elem);
                 }
             },
-            /* 事件绑定 */
             bind:function(type,handler){
-                if(!this[0].events){
-                    this[0].events={};
+                var elem=this[0],
+                    events=that.data(elem,type)||that.data(elem,type,[]);
+                events.push(handler);
+                if(events.length===1){
+                    var handlers=that.handler(elem);
+                    that.addEvent(elem,type,handlers);
                 }
-                var handlers=this[0].events[type];
-                if(!handlers){
-                    handlers=this[0].events[type]=[];
-                    if(this[0]['on'+type]){
-                        handlers[0]=this[0]['on'+type];
-                    }
-                }
-                handlers[0]=handler;
-                this[0]['on'+type]=that.handlerEvent;
             },
-            /* 事件移除 */
             unbind:function(type){
-                this[0].events[type]=null;
+                var elem=this[0],
+                    events=that.data(elem,type);
+                if(events===undefined){return;}
+                that.removeEvent(elem,type);
             },
             /* 事件延迟加载 */
             ready:function(fn){
