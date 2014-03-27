@@ -64,6 +64,7 @@ Q.inCss('b',.a{margin:0;}');
 Q.$('#id'); // id选择器
 Q.$('.class'); // class选择器
 Q.$('*[attribute符号=value]'); // 属性选择器
+Q.$('a > b'); // 选取a元素里面的b元素
 /*
  * [title]{} 包含标题(title)的所有元素
  * a[href]{} 对href属性的a元素应用样式
@@ -121,6 +122,23 @@ Q.$('').css(); // 获样式的值通常用来获取元素的高宽属性
 ```javascript
 Q.$('').each('函数'); // 用来循环
 Q.each('数组或对象','函数'); // 用来循环
+```
+- children
+```javascript
+Q.$('').children(); // 获取当前选中元素的所有子元素
+```
+- find
+```javascript
+Q.$('').children().find(''); // 在获取当前选中元素的所有子元素里面查找需要的元素
+```
+- bind
+```javascript
+Q.$('').bind('事件类型','处理函数'); // 事件绑定
+```
+- unbind
+```javascript
+// 如果不指定参数 则移除选中节点的所有事件
+Q.$('').unbind('要移除的事件类型'); // 事件移除
 ```
 - ready
 ```javascript
