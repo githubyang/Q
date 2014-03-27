@@ -5,7 +5,7 @@
  * 兼容性：几乎兼容所有现代浏览器
  * 性能：尚未测试 但能保证她绝对不是最慢的
  * 开发者：单骑闯天下
- * 最后更新时间：2014.3.25
+ * 最后更新时间：2014.3.27
  * 版本：v 1.0.0 (测试版)
 
  * ---------------------- 项目历程 ---------------------------------------------------------------------------
@@ -46,6 +46,8 @@
  * 增加方法css用来获取元素的 width height padding
  * # 2014年3月25日
  * 修改事件绑定 增加事件缓存 以及修正IE里面的部分事件
+ * # 2014年3月27日
+ * 为IE getElementsByTagName设置了缓存来提升匹配速度
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 ;({
@@ -66,6 +68,8 @@
     cssArr:{},/* 存储已注入css的索引 */
     loaded:{},/* 加载完成 readyState */
     loadList:{},/* 函数执行完毕 开始准备执行回调函数 */
+
+    cacheNode:null,/* 缓存getElementsByTagName(*)选取的数据,在IE里面可以提升速度 */
 
     cacheData:{},/* 缓存事件的数据 */
     uuid:null,/* 缓存事件的计数 */
@@ -303,12 +307,8 @@
                 }
             };
         if(index===undefined){return;}
-        if(key){
-            delete this.cacheData[index][key];
-            if(isEmptyObject(this.cacheData[index])){
-                deleteData(elem);
-            }
-        }else{
+        delete this.cacheData[index][key];
+        if(isEmptyObject(this.cacheData[index])){
             deleteData(elem);
         }
     },
@@ -400,7 +400,11 @@
         }else{
             classNmae=args[0].replace('-','\\-');
             reg=new RegExp('(^|\\s)'+classNmae+'(\\s|$)');
-            a=document.getElementsByTagName(tag);
+            if(this.cacheNode){
+                a=this.cacheNode;
+            }else{
+                this.cacheNode=a=document.getElementsByTagName(tag);
+            }
             n=a.length;
             for(;i<n;i++){
                 b=a[i];
