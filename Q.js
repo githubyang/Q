@@ -47,7 +47,7 @@
  * # 2014年3月25日
  * 修改事件绑定 增加事件缓存 以及修正IE里面的部分事件
  * # 2014年3月27日
- * 为IE getElementsByTagName设置了缓存来提升匹配速度
+ * 为IE getElementsByTagName设置了缓存来提升匹配速度 增加children 和find方法 增加选择器支持 a > b 形式
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 ;({
@@ -660,18 +660,26 @@
             },
             /* 属性选择外部接口 */
             $:function(selector){
-                var elem;
-                if(typeof selector == "object" || selector.nodeType === 1 || selector.nodeType === 9 ){
+                var elem,
+                    reg=/(^[\.|#]{1}\w+)+\s*>\s*(\.*\w+)+$/,
+                    regId=/^#\w+$/,
+                    regClass=/^\.\w+$/,
+                    m;
+                if(typeof selector === "object" || selector.nodeType === 1 || selector.nodeType === 9 ){
                     if(selector == document){
                         selector = document.body;
                     }
                     return that.classArray([selector]);
-                }else if(String(selector).indexOf('#')===0){
+                }else if(regId.test(selector)){
                     elem=document.getElementById(selector.replace('#',''));
                     return that.classArray([elem]);
-                }else if(String(selector).indexOf('.')===0){
+                }else if(regClass.test(selector)){
                     elem=that.className(selector.replace('.',''));
                     return that.classArray(elem);
+                }else if(reg.test(selector)){
+                    m=selector.match(reg);
+                    elem=Q.$(m[1]).children().find(m[2]);
+                    return elem;
                 }else{/* 如果都不是就默认属性匹配 */
                     elem=that.attriubte(selector);
                     return that.classArray(elem);
@@ -840,6 +848,40 @@
             css:function(value){
                 if(value===undefined){return;}
                 return that.getStyle(this[0],value);
+            },
+            /* 获取当前选中元素的所有子元素 */
+            children:function(){
+                var nodes=this[0].childNodes,
+                    i=0,
+                    n=nodes.length,
+                    arr=[];
+                for(;i<n;i++){
+                    if(nodes[i].nodeType===1){
+                        arr.push(nodes[i]);
+                    }
+                }
+                return that.classArray(arr);
+            },
+            /* 在获取当前选中元素的所有子元素里面查找需要的元素 */
+            find:function(value){
+                var nodes=this,
+                    n=nodes.length,
+                    i=0,
+                    arr=[],
+                    attr,
+                    temp=value;
+                for(;i<n;i++){
+                    if((value.indexOf('.')===0)){
+                        temp=(value.indexOf('.')===0)?value.slice(1):value;
+                        attr=Q.$(nodes[i]).attr('class');
+                    }else{
+                        attr=nodes[i].tagName.toLowerCase();
+                    }
+                    if(temp===attr){
+                        arr.push(nodes[i]);
+                    }
+                }
+                return that.classArray(arr);
             },
             /* each外部调用方法 */
             each:function(callback,args){
