@@ -6,7 +6,7 @@
  * 性能：尚未测试 但能保证她绝对不是最慢的
  * 开发者：单骑闯天下
  * 最后更新时间：2014.3.27
- * 版本：v 1.0.0 (测试版)
+ * 版本：v 1.0
 
  * ---------------------- 项目历程 ---------------------------------------------------------------------------
  * 2013年12月份开始构思js模块化加载
@@ -48,6 +48,8 @@
  * 修改事件绑定 增加事件缓存 以及修正IE里面的部分事件
  * # 2014年3月27日
  * 为IE getElementsByTagName设置了缓存来提升匹配速度 增加children 和find方法 增加选择器支持 a > b 形式
+ * # 2014年3月28日
+ * 增加了hover事件
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 ;({
@@ -70,6 +72,7 @@
     loadList:{},/* 函数执行完毕 开始准备执行回调函数 */
 
     cacheNode:null,/* 缓存getElementsByTagName(*)选取的数据,在IE里面可以提升速度 */
+    cdp:null,/* 用来判断浏览器是否支持contains */
 
     cacheData:{},/* 缓存事件的数据 */
     uuid:null,/* 缓存事件的计数 */
@@ -111,6 +114,9 @@
         }());
         if(document.getElementsByClassName){
             that.selector=1;
+        }
+        if(document.compareDocumentPosition){
+            that.cdp=1;
         }
         window.Q=(function(){
             return that.method();
@@ -553,6 +559,47 @@
             return document.defaultView.getComputedStyle(elem,null).getPropertyValue(style);
         }
     },
+    /* 用来判断parent是不是child的父元素 */
+    contains:function(parent,child){
+        if(this.cdp===1){
+            return !!(parent.compareDocumentPosition(child) & 16);
+        }else{
+            return (parent !== child) && (parent.contains ? parent.contains(child) : true);
+        }
+    },
+    /* hover方法的修正函数 */
+    fixMouseLeave:function(elem,fn){
+        var mouseleave = !this.cdp ? "mouseleave" : "mouseout",
+            that=this;
+        if(elem === null || elem === window ){
+            (elem = document);
+        }
+        return {
+            type:mouseleave,
+            elem:elem,
+            fn:!this.cdp ? fn : function(e) {
+                if(that.contains(e.relatedTarget,this)){
+                    fn.call(this,e);
+                }
+            }
+        };
+    },
+    fixMouseEnter:function(elem, fn){
+        var mouseenter = !this.cdp ? "mouseenter" : "mouseover",
+            that=this;
+        if(elem===null || elem===window ){
+            elem = document;
+        }
+        return {
+            type:mouseenter,
+            elem:elem,
+            fn:!this.cdp ? fn : function(e){
+                if(that.contains(e.relatedTarget,this)){
+                    fn.call(this,e);
+                }
+            }
+        };
+    },
     /* 提供给外部访问的方法接口 */
     method:function(){
         var that=this;
@@ -882,6 +929,31 @@
                     }
                 }
                 return that.classArray(arr);
+            },
+            /* 用来获取元素的坐标 top bottom left right -left -top*/
+            bound:function(value){
+                var that;
+                if(value){
+                    that=value;
+                }else{
+                    that=this[0];
+                }
+                return that.getBoundingClientRect();
+            },
+            x:function(){
+                var x=Q.bound(this[0]).left+document.documentElement.scrollLeft-document.documentElement.clientLeft;
+                return x;
+            },
+            y:function(){
+                var y=Q.bound(this[0]).top+document.documentElement.scrollTop-document.documentElement.clientTop;
+                return y;
+            },
+            /* hover方法 */
+            hover:function(fnOver,fnOut){
+                var over=that.fixMouseLeave(this[0],fnOver),
+                    out=that.fixMouseEnter(this[0],fnOut);
+                this.bind(over.type,over.fn);
+                this.bind(out.type,out.fn);
             },
             /* each外部调用方法 */
             each:function(callback,args){
