@@ -152,6 +152,18 @@ Q.$('').unbind('要移除的事件类型'); // 事件移除
 // 必须绑定两个函数
 Q.$('').hover(function(){},function(){});
 ```
+- x()
+```javascript
+Q.$('').x() // 获取元素的x坐标
+```
+- y()
+```javascript
+Q.$('').y() // 获取元素的y坐标
+```
+- bound
+```javascript
+Q.bound() // 返回 top bottom left right -top -left
+```
 - ready
 ```javascript
 Q.ready(function(){}); // 事件加载 等待dom树执行完毕再执行函数
