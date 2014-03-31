@@ -52,6 +52,7 @@
  * 增加了hover事件
  * # 2014年3月31日
  * 重写了ready方法 现在ready事件延迟加载的速度已经达到我想要的速度 比onload快
+ * 修正了hover方法里面的触发问题和绑定函数的执行顺序问题
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 ;({
@@ -569,7 +570,8 @@
             type:mouseleave,
             elem:elem,
             fn:!this.cdp ? fn : function(e) {
-                if(that.contains(e.relatedTarget,this)){
+                var source=e.relatedTarget.tagName.toLowerCase();
+                if(!that.contains(e.relatedTarget,this)||(source==='body')){
                     fn.call(this,e);
                 }
             }
@@ -585,7 +587,8 @@
             type:mouseenter,
             elem:elem,
             fn:!this.cdp ? fn : function(e){
-                if(that.contains(e.relatedTarget,this)){
+                var source=e.relatedTarget.tagName.toLowerCase();
+                if(!that.contains(e.relatedTarget,this)||(source==='body')){
                     fn.call(this,e);
                 }
             }
@@ -979,7 +982,7 @@
                 return y;
             },
             /* hover方法 */
-            hover:function(fnOver,fnOut){
+            hover:function(fnOut,fnOver){
                 var over=that.fixMouseLeave(this[0],fnOver),
                     out=that.fixMouseEnter(this[0],fnOut);
                 this.bind(over.type,over.fn);
