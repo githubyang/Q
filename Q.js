@@ -49,7 +49,9 @@
  * # 2014年3月27日
  * 为IE getElementsByTagName设置了缓存来提升匹配速度 增加children 和find方法 增加选择器支持 a > b 形式
  * # 2014年3月28日
- * 增加了hover事件 增加x()和y()方法来获取元素的坐标 bound()
+ * 增加了hover事件
+ * # 2014年3月31日
+ * 重写了ready方法 现在ready事件延迟加载的速度已经达到我想要的速度 比onload快
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 ;({
@@ -77,6 +79,9 @@
     cacheData:{},/* 缓存事件的数据 */
     uuid:null,/* 缓存事件的计数 */
     expando:null,/* 读取和删除事件缓存数据的索引 */
+
+    ready:undefined, /* 页面是否加载完毕的标识 */
+    readyFn:[], /* ready 函数的队列 */
 
     version:'1.0.0',
 
@@ -112,6 +117,7 @@
                 }
             }(jsObj||{}));
         }());
+        that.readyInit();
         if(document.getElementsByClassName){
             that.selector=1;
         }
@@ -369,21 +375,6 @@
             }
         };
     },
-    initReady:function(fn){
-        if(document.addEventListener){
-            document.addEventListener('DOMContentLoaded',function(){
-                document.removeEventListener("DOMContentLoaded",arguments.callee,false);
-                fn();
-            },false);
-        }else{
-            document.attachEvent("onreadystatechange", function() {
-                if(document.readyState === "complete"){
-                    document.detachEvent("onreadystatechange",arguments.callee);
-                    fn();
-                }
-            });
-        }
-    },
     /* 选择器的API接口 用来选取class=attriubte */
     className:function(){
         var args=Array.prototype.slice.call(arguments),
@@ -600,6 +591,45 @@
             }
         };
     },
+    /* ready的方法 */
+    readyOn:function(fn){
+        if(this.ready===undefined){
+            this.readyFn.push(fn);
+            return;
+        }
+        this.readyRun();
+    },
+    readyRun:function(){
+        var i=0,
+            n=this.readyFn.length;
+        if(n>0){
+            if(n===1){
+                this.readyFn[0]();
+                return;
+            }
+            for(;i<n;i++){
+                this.readyFn[i]();
+            }
+            this.readyFn=null;
+        }
+    },
+    readyInit:function(){
+        var that=this;
+        if(document.addEventListener){
+            document.addEventListener('DOMContentLoaded',function(){
+                that.ready=true;
+                that.readyRun();
+            },false);
+        }else{
+            document.onreadystatechange=function(){
+                if(document.readyState==='complete'){
+                    that.ready=true;
+                    that.readyRun();
+                    document.onreadystatechange=null;
+                }
+            };
+        }
+    },
     /* 提供给外部访问的方法接口 */
     method:function(){
         var that=this;
@@ -749,7 +779,7 @@
             },
             /* 事件延迟加载 */
             ready:function(fn){
-                that.initReady(fn);
+                that.readyOn(fn);
             },
             /* 元素移除 */
             remove:function(elem){
