@@ -5,7 +5,7 @@
  * 兼容性：几乎兼容所有现代浏览器
  * 性能：尚未测试 但能保证她绝对不是最慢的
  * 开发者：单骑闯天下
- * 最后更新时间：2014.3.27
+ * 最后更新时间：2014.4.1
  * 版本：v 1.0
 
  * ---------------------- 项目历程 ---------------------------------------------------------------------------
@@ -53,6 +53,8 @@
  * # 2014年3月31日
  * 重写了ready方法 现在ready事件延迟加载的速度已经达到我想要的速度 比onload快
  * 修正了hover方法里面的触发问题和绑定函数的执行顺序问题
+ * # 2014年4月1日
+ * 修正hover模拟事件的冒泡 children增加在子节点集合查找特定节点的方法 removeClass修正
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 ;({
@@ -438,39 +440,40 @@
         /* 如果支持 IE8+以上都支持 */
         if((!!document.querySelectorAll) && type != "!="){
             value = document.querySelectorAll(search);
-                for(i=0,length = value.length;i < length;i++){
-                    arr.push(value[i]);
-                }
-                return arr;
+            if(value){return arr;}
+            for(i=0,length = value.length;i < length;i++){
+                arr.push(value[i]);
             }
-            for(i=0;i<len;i++){
-                attr=elem[i];
-                value=attr[key];
-                if(typeof value==='string'){
-                    if(value!==false){
-                        var where=false;
-                        if(type==='*='){
-                            where=(value.indexOf(val)>=0)?true:false;
-                        }else if(type==='!='){
-                            where=(value!=val)?true:false; /* 将会选取所有属性值不等于条件值的元素 例: 条件值a title="a b" title="a" 将会选取title="a b" */
-                        }else if(type==='^='){
-                            where=(value.indexOf(val)===0)?true:false; /* 选取以xx开头的所有元素 */
-                        }else if(type==='$='){
-                            n=val.length;
-                            where=(value.slice(-n)===val)?true:false; /* 选取以xx结尾的所有元素 */
-                        }else if(type==='~='){
-                            where=((''+value+'').indexOf(val)>=0)?true:false; /* 选取指定词汇的元素 */
-                        }else if(type==='|='){ /* 匹配属性值为XX或以XX-打头的元素 */
-                            where=( (value===val) ||value.slice(0,val.length+1)===(val+'-') )?true:false;
-                        }else if(type==='='){
-                            where=(value===val)?true:false;
-                        }
-                        if(where){
-                            arr.push(attr);
-                        }
+            return arr;
+        }
+        for(i=0;i<len;i++){
+            attr=elem[i];
+            value=attr[key];
+            if(typeof value==='string'){
+                if(value!==false){
+                    var where=false;
+                    if(type==='*='){
+                        where=(value.indexOf(val)>=0)?true:false;
+                    }else if(type==='!='){
+                        where=(value!=val)?true:false; /* 将会选取所有属性值不等于条件值的元素 例: 条件值a title="a b" title="a" 将会选取title="a b" */
+                    }else if(type==='^='){
+                        where=(value.indexOf(val)===0)?true:false; /* 选取以xx开头的所有元素 */
+                    }else if(type==='$='){
+                        n=val.length;
+                        where=(value.slice(-n)===val)?true:false; /* 选取以xx结尾的所有元素 */
+                    }else if(type==='~='){
+                        where=((''+value+'').indexOf(val)>=0)?true:false; /* 选取指定词汇的元素 */
+                    }else if(type==='|='){ /* 匹配属性值为XX或以XX-打头的元素 */
+                        where=( (value===val) ||value.slice(0,val.length+1)===(val+'-') )?true:false;
+                    }else if(type==='='){
+                        where=(value===val)?true:false;
+                    }
+                    if(where){
+                        arr.push(attr);
                     }
                 }
             }
+        }
         return arr;
     },
     insert:function(elem,value,check){
@@ -560,7 +563,7 @@
         }
     },
     /* hover方法的修正函数 */
-    fixMouseLeave:function(elem,fn){
+    fixMouseLeave:function(elem,fn,boll){
         var mouseleave = !this.cdp ? "mouseleave" : "mouseout",
             that=this;
         if(elem === null || elem === window ){
@@ -569,7 +572,7 @@
         return {
             type:mouseleave,
             elem:elem,
-            fn:!this.cdp ? fn : function(e) {
+            fn:(!this.cdp||boll)? fn : function(e) {
                 var source=e.relatedTarget.tagName.toLowerCase();
                 if(!that.contains(e.relatedTarget,this)||(source==='body')){
                     fn.call(this,e);
@@ -577,7 +580,7 @@
             }
         };
     },
-    fixMouseEnter:function(elem, fn){
+    fixMouseEnter:function(elem,fn,boll){
         var mouseenter = !this.cdp ? "mouseenter" : "mouseover",
             that=this;
         if(elem===null || elem===window ){
@@ -586,7 +589,7 @@
         return {
             type:mouseenter,
             elem:elem,
-            fn:!this.cdp ? fn : function(e){
+            fn:(!this.cdp||boll)? fn : function(e){
                 var source=e.relatedTarget.tagName.toLowerCase();
                 if(!that.contains(e.relatedTarget,this)||(source==='body')){
                     fn.call(this,e);
@@ -843,24 +846,13 @@
                             len=arr.length,
                             n,
                             i=0,
-                            s,
-                            temp;
-                        if(len>1){
-                            for(;i<len;i++){
-                                n=that.indexOf.call(arr,arr[i]);
-                                if(n!=-1){
-                                    arr.splice(n,1);
-                                }
-                            }
-                            s=arr.join(' ');
-                            this[0].className=that.trim(s);
-                        }else{
-                            temp=that.trim(value);
-                            n=that.indexOf.call(arr,temp);
-                            if(n!=-1){
-                                this[0].className='';
-                            }
+                            s;
+                        n=that.indexOf.call(arr,value);
+                        if(n!=-1){
+                            arr.splice(n,1);
                         }
+                        s=arr.join(' ');
+                        this[0].className=that.trim(s);
                     }
                 }else{
                     this[0].className='';
@@ -929,15 +921,26 @@
                 if(value===undefined){return;}
                 return that.getStyle(this[0],value);
             },
-            /* 获取当前选中元素的所有子元素 */
-            children:function(){
+            /* 获取当前选中元素的所有子元素 value提供在子节点列表查找特定的节点*/
+            children:function(value){
                 var nodes=this[0].childNodes,
                     i=0,
+                    elem=[],
+                    s,
                     n=nodes.length,
                     arr=[];
-                for(;i<n;i++){
-                    if(nodes[i].nodeType===1){
-                        arr.push(nodes[i]);
+                if(value){
+                    for(;i<n;i++){
+                        s=nodes[i].className;
+                        if((s.indexOf(value)>=0)){
+                            arr.push(nodes[i]);
+                        }
+                    }
+                }else{
+                    for(;i<n;i++){
+                        if(nodes[i].nodeType===1){
+                            arr.push(nodes[i]);
+                        }
                     }
                 }
                 return that.classArray(arr);
@@ -982,9 +985,12 @@
                 return y;
             },
             /* hover方法 */
-            hover:function(fnOut,fnOver){
-                var over=that.fixMouseLeave(this[0],fnOver),
-                    out=that.fixMouseEnter(this[0],fnOut);
+            hover:function(fnOut,fnOver,boll){
+                if(boll===undefined){
+                    boll=false;
+                }
+                var over=that.fixMouseLeave(this[0],fnOver,boll),
+                    out=that.fixMouseEnter(this[0],fnOut,boll);
                 this.bind(over.type,over.fn);
                 this.bind(out.type,out.fn);
             },
