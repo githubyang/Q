@@ -133,6 +133,7 @@ Q.each('数组或对象','函数'); // 用来循环
 - children
 ```javascript
 Q.$('').children(); // 获取当前选中元素的所有子元素
+Q.$('#a').children('e'); // 获取当前选中元素的所有子元素里面的class等于e的节点
 ```
 - find
 ```javascript
@@ -151,6 +152,7 @@ Q.$('').unbind('要移除的事件类型'); // 事件移除
 ```javascript
 // 必须绑定两个函数
 Q.$('').hover(function(){},function(){});
+// 如果需要冒泡设置最后一个参数为true
 ```
 - x()
 ```javascript
