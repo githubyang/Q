@@ -55,6 +55,8 @@
  * 修正了hover方法里面的触发问题和绑定函数的执行顺序问题
  * # 2014年4月1日
  * 修正hover模拟事件的冒泡 children增加在子节点集合查找特定节点的方法 removeClass修正
+ * # 2014年4月8日
+ * 增加自定义事件触发器spark 必须接受一个触发参数
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 ;({
@@ -993,6 +995,21 @@
                     out=that.fixMouseEnter(this[0],fnOut,boll);
                 this.bind(over.type,over.fn);
                 this.bind(out.type,out.fn);
+            },
+            /* 自定义事件触发器 */
+            spark:function(type){
+                var elem=this[0],
+                    val=Array.prototype.slice.call(arguments,1),
+                    len=val.length,
+                    fn=that.data(elem,type);
+                if(!fn){
+                    return this;
+                }
+                if(len>0){
+                    fn[0].apply(elem,val);
+                    return;
+                }
+                fn[0].call(elem);
             },
             /* each外部调用方法 */
             each:function(callback,args){
