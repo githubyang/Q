@@ -170,6 +170,12 @@ Q.$('').y() // 获取元素的y坐标
 ```javascript
 Q.bound() // 返回 top bottom left right -top -left
 ```
+- extend
+```javascript
+Q.extend(obj,prop) // 合并
+Q.extend({a:function(){}}) // 向向框架挂载a方法支持链式调用
+Q.a() // 调用方法
+```
 - ready
 ```javascript
 Q.ready(function(){}); // 事件加载 等待dom树执行完毕再执行函数
