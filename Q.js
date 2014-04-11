@@ -57,6 +57,8 @@
  * 修正hover模拟事件的冒泡 children增加在子节点集合查找特定节点的方法 removeClass修正
  * # 2014年4月8日
  * 增加自定义事件触发器spark 必须接受一个触发参数
+ * # 2014年4月11日
+ * 实现方法合并extend
  * ----------------------------------------------------------------------------------------------------------*/
 (function(window){
 ;({
@@ -638,6 +640,16 @@
             };
         }
     },
+    extend:function(object,obj,prop) {
+        if (!prop) {
+            prop = obj;
+            obj = object;
+        }
+        for (var i in prop) {
+            obj[i] = prop[i];
+        }
+        return obj;
+    },
     /* 提供给外部访问的方法接口 */
     method:function(){
         var that=this;
@@ -1014,6 +1026,9 @@
             /* each外部调用方法 */
             each:function(callback,args){
                 return that.each(this,callback,args);
+            },
+            extend:function(obj,prop) {
+                return that.extend(this,obj,prop);
             }
         };
     }
